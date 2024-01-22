@@ -1,67 +1,49 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPAsyncWebServer.h>
-#include "AsyncElegantOTA.h"
-#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>  // Ændret
 #include "LittleFS.h"
 #include <Arduino_JSON.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <AsyncElegantOTA.h>
+
 #include "getReading.h"
 
-// GPIO where the DS18B20 sensors are connected to
 const int oneWireBus = 4;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 OneWire ds(4);
 
-// Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
 
-// Search for parameter in HTTP POST request
-const char* PARAM_INPUT_1 = "ssid";
-const char* PARAM_INPUT_2 = "pass";
-const char* PARAM_INPUT_3 = "ip";
-const char* PARAM_INPUT_4 = "gateway";
-
-// Network credentials
-const char* ssid = "E308";
-const char* password = "38806829";
-
-// Create an Event Source on /events
-AsyncEventSource events("/events");
-
-// Json Variable to Hold Sensor Readings
 extern JSONVar readings;
 
-// Timer variables
 unsigned long lastTime = 0;
 unsigned long timerDelay = 15000;
 
-//Variables to save values from HTML form
 String ssidString;
 String pass;
 String ip;
 String gateway;
 
-// File paths to save input values permanently for network
+const char* PARAM_INPUT_1 = "ssid";
+const char* PARAM_INPUT_2 = "pass";
+const char* PARAM_INPUT_3 = "ip";
+const char* PARAM_INPUT_4 = "gateway";
+
 const char* ssidPath = "/ssid.txt";
 const char* passPath = "/pass.txt";
 const char* ipPath = "/ip.txt";
 const char* gatewayPath = "/gateway.txt";
 
 IPAddress localIP;
-
-// Set your Gateway IP address
 IPAddress localGateway;
-//IPAddress localGateway(192, 168, 1, 1); //hardcoded
 IPAddress subnet(255, 255, 0, 0);
 
-// Timer variables
 unsigned long previousMillis = 0;
-const long interval = 10000;  // interval to wait for Wi-Fi connection (milliseconds)
+const long interval = 10000;
 
-// Initialize LittleFS
 void initLittleFS() {
   if (!LittleFS.begin(true)) {
     Serial.println("An error has occurred while mounting LittleFS");
@@ -69,43 +51,37 @@ void initLittleFS() {
   Serial.println("LittleFS mounted successfully");
 }
 
-// Read File from LittleFS
-String readFile(fs::FS &fs, const char * path){
+String readFile(fs::FS &fs, const char *path) {
   Serial.printf("Reading file: %s\r\n", path);
-
   File file = fs.open(path);
-  if(!file || file.isDirectory()){
+  if (!file || file.isDirectory()) {
     Serial.println("- failed to open file for reading");
     return String();
   }
-  
   String fileContent;
-  while(file.available()){
+  while (file.available()) {
     fileContent = file.readStringUntil('\n');
-    break;     
+    break;
   }
   return fileContent;
 }
 
-// Write file to LittleFS
-void writeFile(fs::FS &fs, const char * path, const char * message){
+void writeFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Writing file: %s\r\n", path);
-
   File file = fs.open(path, FILE_WRITE);
-  if(!file){
+  if (!file) {
     Serial.println("- failed to open file for writing");
     return;
   }
-  if(file.print(message)){
+  if (file.print(message)) {
     Serial.println("- file written");
   } else {
-    Serial.println("- frite failed");
+    Serial.println("- write failed");
   }
 }
 
-// WIFI #####################################################################################################################################
 bool initWiFi() {
-  if(ssid=="" || ip==""){
+  if (ssidString == "" || ip == "") {
     Serial.println("Undefined SSID or IP address.");
     return false;
   }
@@ -114,8 +90,7 @@ bool initWiFi() {
   localIP.fromString(ip.c_str());
   localGateway.fromString(gateway.c_str());
 
-
-  if (!WiFi.config(localIP, localGateway, subnet)){
+  if (!WiFi.config(localIP, localGateway, subnet)) {
     Serial.println("STA Failed to configure");
     return false;
   }
@@ -125,7 +100,7 @@ bool initWiFi() {
   unsigned long currentMillis = millis();
   previousMillis = currentMillis;
 
-  while(WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED) {
     currentMillis = millis();
     if (currentMillis - previousMillis >= interval) {
       Serial.println("Failed to connect.");
@@ -137,58 +112,43 @@ bool initWiFi() {
   return true;
 }
 
-// SETUP ##################################################################################################################
+void sendSensorReadingsToWebSocket() {
+  ws.textAll(getSensorReadings());
+}
 
 void setup() {
-  // Serial port for debugging purposes
   Serial.begin(115200);
   initWiFi();
   initLittleFS();
 
-  // Load values saved in LittleFS
   ssidString = readFile(LittleFS, ssidPath);
   pass = readFile(LittleFS, passPath);
   ip = readFile(LittleFS, ipPath);
   gateway = readFile(LittleFS, gatewayPath);
-  Serial.println(ssid);
+  Serial.println(ssidString);
   Serial.println(pass);
   Serial.println(ip);
   Serial.println(gateway);
 
   if (initWiFi()) {
-    // Route for root / web page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/index.html", "text/html", false);
     });
     server.serveStatic("/", LittleFS, "/");
 
-    // Request for the latest sensor readings
     server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request) {
       String json = getSensorReadings();
       request->send(200, "application/json", json);
       json = String();
     });
 
-    events.onConnect([](AsyncEventSourceClient *client) {
-      if (client->lastId()) {
-        Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-      }
-      // send event with message "hello!", id current millis
-      // and set reconnect delay to 1 second
-      client->send("hello!", NULL, millis(), 10000);
-    });
-
-    server.addHandler(&events);
+    server.addHandler(&ws);
     server.begin();
   } else {
-    // Connect to Wi-Fi network with SSID and password
-    // NULL sets an open Access Point
     WiFi.softAP("ESP-WIFI-Lucas", NULL);
-
     IPAddress IP = WiFi.softAPIP();
     Serial.println(IP);
 
-    // Web Server Root URL
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/wifimanager.html", "text/html");
     });
@@ -196,40 +156,32 @@ void setup() {
     server.serveStatic("/", LittleFS, "/");
 
     server.on("/", HTTP_POST, [](AsyncWebServerRequest *request) {
-    int params = request->params();
-    for (int i = 0; i < params; i++) {
+      int params = request->params();
+      for (int i = 0; i < params; i++) {
         AsyncWebParameter *p = request->getParam(i);
         if (p->isPost()) {
-            // HTTP POST ssid value
-            if (p->name() == PARAM_INPUT_1) {
-                ssidString = p->value().c_str();
-                Serial.print("SSID set to: ");
-                Serial.println(ssidString);
-                // Write file to save value
-                writeFile(LittleFS, ssidPath, ssidString.c_str());
-            }
-          // HTTP POST pass value
+          if (p->name() == PARAM_INPUT_1) {
+            ssidString = p->value().c_str();
+            Serial.print("SSID set to: ");
+            Serial.println(ssidString);
+            writeFile(LittleFS, ssidPath, ssidString.c_str());
+          }
           if (p->name() == PARAM_INPUT_2) {
             pass = p->value().c_str();
             Serial.print("Password set to: ");
             Serial.println(pass);
-            // Write file to save value
             writeFile(LittleFS, passPath, pass.c_str());
           }
-          // HTTP POST ip value
           if (p->name() == PARAM_INPUT_3) {
             ip = p->value().c_str();
             Serial.print("IP Address set to: ");
             Serial.println(ip);
-            // Write file to save value
             writeFile(LittleFS, ipPath, ip.c_str());
           }
-          // HTTP POST gateway value
           if (p->name() == PARAM_INPUT_4) {
             gateway = p->value().c_str();
             Serial.print("Gateway set to: ");
             Serial.println(gateway);
-            // Write file to save value
             writeFile(LittleFS, gatewayPath, gateway.c_str());
           }
         }
@@ -238,15 +190,15 @@ void setup() {
       delay(3000);
       ESP.restart();
     });
+    server.addHandler(&ws);
     server.begin();
   }
 }
 
 void loop() {
   if ((millis() - lastTime) > timerDelay) {
-    // Send Events to the client with the Sensor Readings Every 10 seconds
-    events.send("ping",NULL,millis());
-    events.send(getSensorReadings().c_str(),"new_readings" ,millis());
+    sendSensorReadingsToWebSocket();
     lastTime = millis();
   }
+  // Tilføj eventuel anden løkkekode her
 }
