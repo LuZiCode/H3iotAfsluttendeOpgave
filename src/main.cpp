@@ -6,16 +6,14 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AsyncElegantOTA.h>
-#include "config.h" // Custom config
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <SD.h>
-#include <SPI.h>
 
-#include "getReading.h"
+#include "config.h" // Custom config
+#include "sdCardLogic.h" // SD card Logic 
+#include "getReading.h" // Reading Logic
 
 //Prototypes:
-void logSDCard(int currentReadingID);
 
 const int oneWireBus = ONE_WIRE_BUS_VALUE;
 OneWire oneWire(oneWireBus);
@@ -55,40 +53,11 @@ const long interval = 10000;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "87.104.58.9", 3600, 60000);
 
-// SD Card related variables
-const int SD_CS = 5;
-RTC_DATA_ATTR int readingID = 0;
-
 String formattedDate;
 String dayStamp;
 String timeStamp;
 
 // SD CARD ############################################################################################################################
-
-void initSDCard() {
-  if (!SD.begin(SD_CS)) {
-    Serial.println("SD Card Mount Failed");
-    return;
-  }
-}
-
-int getMaxReadingID() {
-  File file = SD.open("/data.txt", FILE_READ);
-  int maxReadingID = 0;
-
-  if (file) {
-    while (file.available()) {
-      String line = file.readStringUntil('\n');
-      int currentReadingID = line.substring(0, line.indexOf(',')).toInt();
-      if (currentReadingID > maxReadingID) {
-        maxReadingID = currentReadingID;
-      }
-    }
-    file.close();
-  }
-
-  return maxReadingID;
-}
 
 void getTimeStamp() {
   while (!timeClient.update()) {
@@ -110,24 +79,7 @@ void sendSensorReadingsToWebSocket() {
 
   // Log data to SD Card
   int maxReadingID = getMaxReadingID();
-  logSDCard(maxReadingID + 1);
-}
-
-void logSDCard(int currentReadingID) {
-    sensors.begin();
-    getSensorReadings();
-    getTimeStamp();
-
-    readingID = currentReadingID;
-    Serial.print("Current Reading ID: ");
-    Serial.println(readingID);
-
-    String dataMessage = String(readingID) + "," + String(dayStamp) + "," + String(timeStamp) + "," +
-                         JSON.stringify(readings["sensor1"]) + "," +
-                         JSON.stringify(readings["sensor2"]) + "\r\n";
-    Serial.print("Save data: ");
-    Serial.println(dataMessage);
-    appendFile(SD, "/data.txt", dataMessage.c_str());
+  logSDCard(sensors, maxReadingID + 1, dayStamp, timeStamp);
 }
 
 
