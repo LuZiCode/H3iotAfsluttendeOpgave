@@ -53,7 +53,7 @@ IPAddress subnet(255, 255, 0, 0);
 const long interval = 10000;
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
+NTPClient timeClient(ntpUDP, "87.104.58.9", 3600, 60000);
 
 // SD Card related variables
 const int SD_CS = 5;

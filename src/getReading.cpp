@@ -9,6 +9,7 @@ extern DallasTemperature sensors;
 DeviceAddress sensorAddresses[2]; 
 int numberOfSensors = 0;
 bool sensorsInitialized = false;
+JSONVar readings;
 
 // Function to initialize and find sensor addresses
 void findSensors() {
@@ -30,7 +31,6 @@ String getSensorReadings() {
 
   sensors.requestTemperatures();
 
-  JSONVar readings;
   for (int i = 0; i < numberOfSensors; i++) {
     float temp = sensors.getTempC(sensorAddresses[i]);
     

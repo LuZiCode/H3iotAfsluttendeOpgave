@@ -53,14 +53,15 @@ window.addEventListener('load', function () {
 // Plot temperature in the temperature chart
 function plotTemperature(jsonValue) {
   if (jsonValue.hasOwnProperty("time")) {
-    var x = new Date(jsonValue.time).getTime();
-    console.log(x);
-
+    // var x = new Date(jsonValue.time).getTime();
+    // console.log(x);
+    
     // Assuming the JSON structure is like {"sensor1": "...", "sensor2": "...", "time": "..."}
     Object.keys(jsonValue).forEach((key, i) => {
+      var x = jsonValue.time;
       if (key !== "time") {
         var y = Number(jsonValue[key]);
-
+        console.log("CHART SERIES!!!!", chartT.series[i])
         if (chartT.series[i].data.length >= 30) {
           chartT.series[i].addPoint([x, y], true, true, true);
         } else {
