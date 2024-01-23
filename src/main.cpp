@@ -1,18 +1,24 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPAsyncWebServer.h>  // Ændret
+#include <ESPAsyncWebServer.h>
 #include "LittleFS.h"
 #include <Arduino_JSON.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AsyncElegantOTA.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
+#include <SD.h>
+#include <SPI.h>
 
 #include "getReading.h"
+
+//Prototypes:
+void logSDCard(int currentReadingID);
 
 const int oneWireBus = 4;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
-OneWire ds(4);
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -37,12 +43,93 @@ const char* passPath = "/pass.txt";
 const char* ipPath = "/ip.txt";
 const char* gatewayPath = "/gateway.txt";
 
+IPAddress dns(8, 8, 8, 8);
 IPAddress localIP;
 IPAddress localGateway;
 IPAddress subnet(255, 255, 0, 0);
 
-unsigned long previousMillis = 0;
 const long interval = 10000;
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, 60000);
+
+// SD Card related variables
+const int SD_CS = 5;
+RTC_DATA_ATTR int readingID = 0;
+
+String formattedDate;
+String dayStamp;
+String timeStamp;
+
+// SD CARD ############################################################################################################################
+
+void initSDCard() {
+  if (!SD.begin(SD_CS)) {
+    Serial.println("SD Card Mount Failed");
+    return;
+  }
+}
+
+int getMaxReadingID() {
+  File file = SD.open("/data.txt", FILE_READ);
+  int maxReadingID = 0;
+
+  if (file) {
+    while (file.available()) {
+      String line = file.readStringUntil('\n');
+      int currentReadingID = line.substring(0, line.indexOf(',')).toInt();
+      if (currentReadingID > maxReadingID) {
+        maxReadingID = currentReadingID;
+      }
+    }
+    file.close();
+  }
+
+  return maxReadingID;
+}
+
+void getTimeStamp() {
+  while (!timeClient.update()) {
+    timeClient.forceUpdate();
+  }
+  formattedDate = timeClient.getFormattedDate();
+  int splitT = formattedDate.indexOf("T");
+  dayStamp = formattedDate.substring(0, splitT);
+  timeStamp = formattedDate.substring(splitT + 1, formattedDate.length() - 1);
+}
+
+void sendSensorReadingsToWebSocket() {
+  getTimeStamp();
+  String jsonString = getSensorReadings();
+  JSONVar json = JSON.parse(jsonString);
+  json["time"] = timeStamp;
+  jsonString = JSON.stringify(json);
+  ws.textAll(jsonString);
+
+  // Log data to SD Card
+  int maxReadingID = getMaxReadingID();
+  logSDCard(maxReadingID + 1);
+}
+
+void logSDCard(int currentReadingID) {
+    sensors.begin();
+    getSensorReadings();
+    getTimeStamp();
+
+    readingID = currentReadingID;
+    Serial.print("Current Reading ID: ");
+    Serial.println(readingID);
+
+    String dataMessage = String(readingID) + "," + String(dayStamp) + "," + String(timeStamp) + "," +
+                         JSON.stringify(readings["sensor1"]) + "," +
+                         JSON.stringify(readings["sensor2"]) + "\r\n";
+    Serial.print("Save data: ");
+    Serial.println(dataMessage);
+    appendFile(SD, "/data.txt", dataMessage.c_str());
+}
+
+
+// LittleFS #############################################################################################################################
 
 void initLittleFS() {
   if (!LittleFS.begin(true)) {
@@ -98,7 +185,7 @@ bool initWiFi() {
   Serial.println("Connecting to WiFi...");
 
   unsigned long currentMillis = millis();
-  previousMillis = currentMillis;
+  unsigned long previousMillis = currentMillis;
 
   while (WiFi.status() != WL_CONNECTED) {
     currentMillis = millis();
@@ -112,23 +199,16 @@ bool initWiFi() {
   return true;
 }
 
-void sendSensorReadingsToWebSocket() {
-  ws.textAll(getSensorReadings());
-}
-
 void setup() {
   Serial.begin(115200);
   initWiFi();
   initLittleFS();
+  initSDCard(); // Initialize SD Card
 
   ssidString = readFile(LittleFS, ssidPath);
   pass = readFile(LittleFS, passPath);
   ip = readFile(LittleFS, ipPath);
   gateway = readFile(LittleFS, gatewayPath);
-  Serial.println(ssidString);
-  Serial.println(pass);
-  Serial.println(ip);
-  Serial.println(gateway);
 
   if (initWiFi()) {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -137,9 +217,14 @@ void setup() {
     server.serveStatic("/", LittleFS, "/");
 
     server.on("/readings", HTTP_GET, [](AsyncWebServerRequest *request) {
-      String json = getSensorReadings();
-      request->send(200, "application/json", json);
-      json = String();
+      String jsonString = getSensorReadings();
+      JSONVar json = JSON.parse(jsonString);
+      json["time"] = timeStamp;
+      jsonString = JSON.stringify(json);
+      request->send(200, "application/json", jsonString);
+      Serial.println("XXXXXX");
+      Serial.println(timeStamp);
+      Serial.println(jsonString);
     });
 
     server.addHandler(&ws);
@@ -196,9 +281,10 @@ void setup() {
 }
 
 void loop() {
+  timeClient.update();
   if ((millis() - lastTime) > timerDelay) {
     sendSensorReadingsToWebSocket();
     lastTime = millis();
   }
-  // Tilføj eventuel anden løkkekode her
+  // Add any other loop code here
 }

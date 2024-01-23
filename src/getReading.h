@@ -1,14 +1,17 @@
-#ifndef GET_READING_H
-#define GET_READING_H
+#ifndef GETREADING_H
+#define GETREADING_H
 
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <Arduino_JSON.h>
+#include <DallasTemperature.h>
 
-extern DallasTemperature sensors;
+#include <FS.h>
+
+void appendFile(fs::FS &fs, const char *path, const char *message);
+
+extern JSONVar readings;
 extern DeviceAddress sensor1;
 extern DeviceAddress sensor2;
 
 String getSensorReadings();
 
-#endif  // GET_READING_H
+#endif  // GETREADING_H

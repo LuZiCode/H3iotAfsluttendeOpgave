@@ -52,18 +52,23 @@ window.addEventListener('load', function () {
 
 // Plot temperature in the temperature chart
 function plotTemperature(jsonValue) {
-  Object.keys(jsonValue).forEach((key, i) => {
-    var x = new Date();
-    x.setHours(x.getHours() + 1);
-    x = x.getTime();
-    var y = Number(jsonValue[key]);
+  if (jsonValue.hasOwnProperty("time")) {
+    var x = new Date(jsonValue.time).getTime();
+    console.log(x);
 
-    if (chartT.series[i].data.length >= 30) {
-      chartT.series[i].addPoint([x, y], true, true, true);
-    } else {
-      chartT.series[i].addPoint([x, y], true, false, true);
-    }
-  });
+    // Assuming the JSON structure is like {"sensor1": "...", "sensor2": "...", "time": "..."}
+    Object.keys(jsonValue).forEach((key, i) => {
+      if (key !== "time") {
+        var y = Number(jsonValue[key]);
+
+        if (chartT.series[i].data.length >= 30) {
+          chartT.series[i].addPoint([x, y], true, true, true);
+        } else {
+          chartT.series[i].addPoint([x, y], true, false, true);
+        }
+      }
+    });
+  }
 }
 
 // Function to get current readings on the webpage when it loads for the first time

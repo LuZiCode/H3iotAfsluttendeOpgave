@@ -1,4 +1,9 @@
 #include "getReading.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+extern OneWire oneWire;
+extern DallasTemperature sensors;
 
 // Json Variable to Hold Sensor Readings
 JSONVar readings;
@@ -22,4 +27,14 @@ String getSensorReadings() {
 
   String jsonString = JSON.stringify(readings);
   return jsonString;
+}
+
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+    File file = fs.open(path, FILE_APPEND);
+    if (!file) {
+        Serial.println("Failed to open file for appending");
+        return;
+    }
+    file.print(message);
+    file.close();
 }
