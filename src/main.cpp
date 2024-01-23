@@ -6,13 +6,13 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AsyncElegantOTA.h>
-
+#include "config.h" // Custom config
 #include "getReading.h"
 
-const int oneWireBus = 4;
+const int oneWireBus = ONE_WIRE_BUS_VALUE;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
-OneWire ds(4);
+OneWire ds(ONE_WIRE_BUS_VALUE);
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -145,7 +145,7 @@ void setup() {
     server.addHandler(&ws);
     server.begin();
   } else {
-    WiFi.softAP("ESP-WIFI-Lucas", NULL);
+    WiFi.softAP(WIFI_SSID, NULL);
     IPAddress IP = WiFi.softAPIP();
     Serial.println(IP);
 
