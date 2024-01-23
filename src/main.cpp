@@ -13,7 +13,10 @@
 #include "sdCardLogic.h" // SD card Logic 
 #include "getReading.h" // Reading Logic
 
-//Prototypes:
+// Define pin for WIFI Reset button
+const int buttonPin = RESET_BTN_VALUE; // Erstat med din GPIO pin
+unsigned long buttonPressTime = 0;
+bool isButtonPressed = false;
 
 const int oneWireBus = ONE_WIRE_BUS_VALUE;
 OneWire oneWire(oneWireBus);
@@ -232,6 +235,7 @@ void setup() {
     server.addHandler(&ws);
     server.begin();
   }
+  pinMode(buttonPin, INPUT_PULLUP);
 }
 
 void loop() {
@@ -240,5 +244,23 @@ void loop() {
     sendSensorReadingsToWebSocket();
     lastTime = millis();
   }
-  // Add any other loop code here
+  // Check Resetbtn status
+  if (digitalRead(buttonPin) == LOW) {
+    if (!isButtonPressed) {
+      isButtonPressed = true;
+      buttonPressTime = millis();
+    } else if (millis() - buttonPressTime > 5000) {
+      // Nulstil WiFi-konfigurationen
+      Serial.println("Resseting WiFi-Configuration...");
+      LittleFS.remove(ssidPath);
+      LittleFS.remove(passPath);
+      LittleFS.remove(ipPath);
+      LittleFS.remove(gatewayPath);
+
+      // Genstart ESP32
+      ESP.restart();
+    }
+  } else {
+    isButtonPressed = false;
+  }
 }
