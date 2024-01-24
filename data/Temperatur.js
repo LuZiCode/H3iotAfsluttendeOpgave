@@ -183,7 +183,7 @@ fetch(Site_address + '/loaddata')
           if (item.length === 5 && item[1] && item[2] && item[3] && item[4]) {
             // Combine the date and time to create a complete timestamp
             var dateTimeString = item[1] + " " + item[2];
-            var timestamp = new Date(dateTimeString + " UTC").getTime() + (60 * 60 * 1000);
+            var timestamp = new Date(dateTimeString + " UTC").getTime();
 
             // Use the temperature value for Temperature #1 series
             var temperature1 = Number(item[3]);
