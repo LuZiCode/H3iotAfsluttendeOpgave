@@ -48,8 +48,6 @@ window.addEventListener('load', function () {
     }
   });
 
-  // Fetch and plot initial readings
-  getReadings();
 // Create Temperature Chart
 chartT = new Highcharts.Chart({
   chart: {
@@ -155,7 +153,7 @@ function initBtnMethod(method) {
 }
 
 // Get historical data from the server
-fetch(Site_address + 'loaddata')
+fetch(Site_address + '/loaddata')
   .then(function (response) {
     // Check if the response status is OK (200)
     if (response.ok) {
@@ -185,7 +183,7 @@ fetch(Site_address + 'loaddata')
           if (item.length === 5 && item[1] && item[2] && item[3] && item[4]) {
             // Combine the date and time to create a complete timestamp
             var dateTimeString = item[1] + " " + item[2];
-            var timestamp = new Date(dateTimeString).getTime();
+            var timestamp = new Date(dateTimeString + " UTC").getTime() + (60 * 60 * 1000);
 
             // Use the temperature value for Temperature #1 series
             var temperature1 = Number(item[3]);

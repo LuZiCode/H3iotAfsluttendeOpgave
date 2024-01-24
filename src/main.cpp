@@ -193,6 +193,7 @@ void setup() {
     });
 
     server.on("/loaddata", HTTP_GET, [](AsyncWebServerRequest *request) {
+      Serial.println("Hej Med Dig");
       // Read historical data from the SD card file
       File file = SD.open("/data.txt", FILE_READ); // Assuming the data is stored in "/data.txt"
       if (file) {
