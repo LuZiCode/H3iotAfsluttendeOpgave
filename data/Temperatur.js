@@ -155,14 +155,17 @@ function initBtnMethod(method) {
 // Get historical data from the server
 fetch(Site_address + '/loaddata')
   .then(function (response) {
+    console.log("RESPONSE!!!!", response);
     // Check if the response status is OK (200)
     if (response.ok) {
+      console.log("RESPONSE TEXT!!!!", response.text);
       return response.text(); // Read the CSV data as text
     } else {
       throw new Error('Failed to load historical data');
     }
   })
   .then(function (csvData) {
+    console.log("CSV DATA!!!!", csvData);
     // Parse the CSV data using papaparse
     Papa.parse(csvData, {
       header: false, // Assumes the first row contains headers

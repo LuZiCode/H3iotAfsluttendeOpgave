@@ -20,7 +20,7 @@
             <label for="pass">Password</label>
             <input type="text" id ="pass" name="pass"><br>
             <label for="ip">IP Address</label>
-            <input type="text" id ="ip" name="ip" value="192.168.0.203"><br>
+            <input type="text" id ="ip" name="ip" value=""><br>
             <label for="gateway">Gateway Address</label>
             <input type="text" id ="gateway" name="gateway" value="192.168.0.1"><br>
             <input type ="submit" value ="Submit">
@@ -29,5 +29,10 @@
       </div>
     </div>
   </div>
+  <script src="Config.js"></script>
+  <script>
+    const ipElement = document.getElementById('ip');
+    ipElement.value = ipAddress;
+  </script>
 </body>
 </html>
