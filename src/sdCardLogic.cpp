@@ -13,6 +13,7 @@ void initSDCard() {
     return;
   }
 }
+
 int getMaxReadingID() {
   File file = SD.open("/data.txt", FILE_READ);
   int maxReadingID = 0;

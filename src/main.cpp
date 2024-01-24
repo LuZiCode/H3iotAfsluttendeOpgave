@@ -13,12 +13,12 @@
 #include "sdCardLogic.h" // SD card Logic 
 #include "getReading.h" // Reading Logic
 
-//Parameter
+// Parameter
 void buttonHandling(String method);
 void resetWifiConfiguration();
 
 // Define pin for WIFI Reset button
-const int buttonPin = RESET_BTN_VALUE; // Erstat med din GPIO pin
+const int buttonPin = RESET_BTN_VALUE; // Replace with your GPIO pin
 unsigned long buttonPressTime = 0;
 bool isButtonPressed = false;
 
@@ -66,35 +66,8 @@ String timeStamp;
 
 // SD CARD ############################################################################################################################
 
-void initSDCard() {
-  if (!SD.begin(SD_CS)) {
-    Serial.println("SD Card Mount Failed");
-    return;
-  }
-}
-
-int getMaxReadingID() {
-  File file = SD.open("/data.txt", FILE_READ);
-  int maxReadingID = 0;
-
-  if (file) {
-    while (file.available()) {
-      String line = file.readStringUntil('\n');
-      int currentReadingID = line.substring(0, line.indexOf(',')).toInt();
-      if (currentReadingID > maxReadingID) {
-        maxReadingID = currentReadingID;
-      }
-    }
-    file.close();
-  }
-
-  return maxReadingID;
-}
-
-void getTimeStamp()
-{
-  while (!timeClient.update())
-  {
+void getTimeStamp() {
+  while (!timeClient.update()) {
     timeClient.forceUpdate();
   }
   // We need to extract date and time
@@ -219,22 +192,17 @@ void setup() {
       Serial.println(jsonString);
     });
 
-    server.on("/loaddata", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
+    server.on("/loaddata", HTTP_GET, [](AsyncWebServerRequest *request) {
       // Read historical data from the SD card file
       File file = SD.open("/data.txt", FILE_READ); // Assuming the data is stored in "/data.txt"
-      if (file)
-      {
-          String historicalData = file.readString();
-          file.close();
-          // Send the historical data as a response
-          request->send(200, "application/json", historicalData);
+      if (file) {
+        String historicalData = file.readString();
+        file.close();
+        // Send the historical data as a response
+        request->send(200, "application/json", historicalData);
+      } else {
+        request->send(404, "text/plain", "File not found");
       }
-      else
-      {
-          request->send(404, "text/plain", "File not found");
-      }
-  });
     });
 
     server.on("/buttonHandling", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -321,14 +289,14 @@ void loop() {
 }
 
 void resetWifiConfiguration() {
-  // Nulstil WiFi-konfigurationen
-  Serial.println("Resseting WiFi-Configuration...");
+  // Reset WiFi configuration
+  Serial.println("Resetting WiFi Configuration...");
   LittleFS.remove(ssidPath);
   LittleFS.remove(passPath);
   LittleFS.remove(ipPath);
   LittleFS.remove(gatewayPath);
 
-  // Genstart ESP32
+  // Restart ESP32
   ESP.restart();
 }
 
@@ -336,11 +304,11 @@ void buttonHandling(String method) {
   if (method == "clearnetwork") {
     Serial.println("clearnetwork if statement hit");
     resetWifiConfiguration();
-  }
-  else if (method == "textfile") {
-    Serial.println("textfile if statement hit");'
-  }
-  else if (method == "30days") {
+  } else if (method == "textfile") {
+    Serial.println("textfile if statement hit");
+    // Add your logic for the "textfile" case
+  } else if (method == "30days") {
     Serial.println("30 days if statement hit");
+    // Add your logic for the "30days" case
   }
 }
