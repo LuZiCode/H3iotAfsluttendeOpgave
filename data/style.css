@@ -10,10 +10,82 @@ h1 {
 p {
   font-size: 1.4rem;
 }
+
+.topnav h1 {
+  margin: 0 auto; /* Centrerer h1 ved at anvende auto-margin */
+}
+
 .topnav {
+  display: flex; 
+  justify-content: space-between;
+  align-items: center; 
   overflow: hidden;
   background-color: #0A1128;
+  padding: 0 10px; 
+  min-height: fit-content;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
+.burger-btn {
+  position: relative;
+  background-color: transparent; 
+  border: none; 
+  color: white; 
+  font-size: 1.5rem;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: transform ease-in-out 1s;
+}
+
+.burger-btn:hover {
+  transform: rotate(360deg);
+}
+
+.burger-content {
+  display: block;
+  text-align: center;
+  background-color: #0A1128;
+  color: white;
+  max-height: 0;
+  padding: 10px;
+  transition: max-height 2s ease-in-out, visibility 0s linear, opacity 0s linear;
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+}
+
+.burger-show {
+  visibility: visible;
+  opacity: 1;
+  max-height: 500px;
+}
+
+.burger-graf-btn {
+  min-width: 17rem;
+  background-color: #2040a8;
+  color: white;
+  border: 1px solid white;
+  border-radius: 5px;
+  margin: 30px auto;
+  min-height: 2rem;
+  display: block;
+}
+
+.burger-graf-btn:hover {
+  cursor: pointer;
+  background-color: #435eb8;
+}
+
+@media screen and (max-width: 600px) {
+  .burger-btn {
+    font-size: 2rem; /* Større knap for nemmere adgang på små skærme */
+  }
+
+  h1 {
+    font-size: 1.5rem; /* Mindre tekststørrelse for titlen */
+  }
+}
+
 body {
   margin: 0;
 }

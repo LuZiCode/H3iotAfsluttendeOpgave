@@ -1,5 +1,54 @@
 var chartT;
 
+// Get current sensor readings when the page loads
+window.addEventListener('load', function () {
+  setEventlisterners();
+  // Create Temperature Chart
+  chartT = new Highcharts.Chart({
+    chart: {
+      renderTo: 'chart-temperature'
+    },
+    series: [
+      {
+        name: 'Temperature #1',
+        type: 'line',
+        color: '#101D42',
+        marker: {
+          symbol: 'circle',
+          radius: 3,
+          fillColor: '#101D42',
+        }
+      },
+      {
+        name: 'Temperature #2',
+        type: 'line',
+        color: '#00A6A6',
+        marker: {
+          symbol: 'square',
+          radius: 3,
+          fillColor: '#00A6A6',
+        }
+      }
+    ],
+    title: {
+      text: undefined
+    },
+    xAxis: {
+      type: 'datetime',
+      dateTimeLabelFormats: { second: '%H:%M:%S' }
+    },
+    yAxis: {
+      title: {
+        text: 'Temperature Celsius Degrees'
+      }
+    },
+    credits: {
+      enabled: false
+    }
+  });
+
+  // Fetch and plot initial readings
+  getReadings();
 // Create Temperature Chart
 chartT = new Highcharts.Chart({
   chart: {
@@ -44,6 +93,64 @@ chartT = new Highcharts.Chart({
   },
   timezoneOffset: new Date().getTimezoneOffset() + 60
 });
+
+function setEventlisterners() {
+  var pressed = false;
+  const burgerBtn = this.document.getElementById('burgerBtn');
+  const brugerContent = this.document.getElementById('burgerContent');
+  const burgerGrafBtns = this.document.getElementsByClassName('burger-graf-btn')
+  burgerBtn.addEventListener('click', function() {
+    if (!pressed) {
+      pressed = true;
+      brugerContent.classList.add('burger-show');
+    }
+    else {
+      pressed = false;
+      brugerContent.classList.remove('burger-show');
+    }
+  })
+  for (var i = 0; i < burgerGrafBtns.length; i++) {
+    burgerGrafBtns[i].addEventListener('click', function(event) {
+      initBtnMethod(event.target.value);
+    })
+  }
+}
+
+function initBtnMethod(method) {
+  fetch(`/buttonHandling?param=${encodeURIComponent(method)}`)
+    .then(response => response.text())
+    .then(data => console.log(data))
+    .catch(error => console.error('Der opstod en fejl:', error));
+}
+
+function setEventlisterners() {
+  var pressed = false;
+  const burgerBtn = this.document.getElementById('burgerBtn');
+  const brugerContent = this.document.getElementById('burgerContent');
+  const burgerGrafBtns = this.document.getElementsByClassName('burger-graf-btn')
+  burgerBtn.addEventListener('click', function() {
+    if (!pressed) {
+      pressed = true;
+      brugerContent.classList.add('burger-show');
+    }
+    else {
+      pressed = false;
+      brugerContent.classList.remove('burger-show');
+    }
+  })
+  for (var i = 0; i < burgerGrafBtns.length; i++) {
+    burgerGrafBtns[i].addEventListener('click', function(event) {
+      initBtnMethod(event.target.value);
+    })
+  }
+}
+
+function initBtnMethod(method) {
+  fetch(`/buttonHandling?param=${encodeURIComponent(method)}`)
+    .then(response => response.text())
+    .then(data => console.log(data))
+    .catch(error => console.error('Der opstod en fejl:', error));
+}
 
 // Get historical data from the server
 fetch('http://192.168.0.203/loaddata')

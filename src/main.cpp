@@ -6,16 +6,21 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <AsyncElegantOTA.h>
-#include "config.h" // Custom config
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-#include <SD.h>
-#include <SPI.h>
 
-#include "getReading.h"
+#include "config.h" // Custom config
+#include "sdCardLogic.h" // SD card Logic 
+#include "getReading.h" // Reading Logic
 
-// Prototypes:
-void logSDCard(int currentReadingID);
+//Parameter
+void buttonHandling(String method);
+void resetWifiConfiguration();
+
+// Define pin for WIFI Reset button
+const int buttonPin = RESET_BTN_VALUE; // Erstat med din GPIO pin
+unsigned long buttonPressTime = 0;
+bool isButtonPressed = false;
 
 const int oneWireBus = ONE_WIRE_BUS_VALUE;
 OneWire oneWire(oneWireBus);
@@ -54,10 +59,6 @@ const long interval = 10000;
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "87.104.58.9", 3600, 60000);
-
-// SD Card related variables
-const int SD_CS = 5;
-RTC_DATA_ATTR int readingID = 0;
 
 String formattedDate;
 String dayStamp;
@@ -116,24 +117,7 @@ void sendSensorReadingsToWebSocket() {
 
   // Log data to SD Card
   int maxReadingID = getMaxReadingID();
-  logSDCard(maxReadingID + 1);
-}
-
-void logSDCard(int currentReadingID) {
-    sensors.begin();
-    getSensorReadings();
-    getTimeStamp();
-
-    readingID = currentReadingID;
-    Serial.print("Current Reading ID: ");
-    Serial.println(readingID);
-
-    String dataMessage = String(readingID) + "," + String(dayStamp) + "," + String(timeStamp) + "," +
-                         JSON.stringify(readings["sensor1"]) + "," +
-                         JSON.stringify(readings["sensor2"]) + "\r\n";
-    Serial.print("Save data: ");
-    Serial.println(dataMessage);
-    appendFile(SD, "/data.txt", dataMessage.c_str());
+  logSDCard(sensors, maxReadingID + 1, dayStamp, timeStamp);
 }
 
 // LittleFS #############################################################################################################################
@@ -251,6 +235,17 @@ void setup() {
           request->send(404, "text/plain", "File not found");
       }
   });
+    });
+
+    server.on("/buttonHandling", HTTP_GET, [](AsyncWebServerRequest *request) {
+      if (request->hasArg("param")) {
+        String paramValue = request->arg("param");
+        buttonHandling(paramValue);
+        request->send(200, "text/plain", "Metoden blev kaldt med param: " + paramValue);
+      } else {
+        request->send(400, "text/plain", "Parameter 'param' mangler");
+      }
+    });
 
     server.addHandler(&ws);
     server.begin();
@@ -303,6 +298,7 @@ void setup() {
     server.addHandler(&ws);
     server.begin();
   }
+  pinMode(buttonPin, INPUT_PULLUP);
 }
 
 void loop() {
@@ -311,5 +307,40 @@ void loop() {
     sendSensorReadingsToWebSocket();
     lastTime = millis();
   }
-  // Add any other loop code here
+  // Check Resetbtn status
+  if (digitalRead(buttonPin) == LOW) {
+    if (!isButtonPressed) {
+      isButtonPressed = true;
+      buttonPressTime = millis();
+    } else if (millis() - buttonPressTime > 5000) {
+      resetWifiConfiguration();
+    }
+  } else {
+    isButtonPressed = false;
+  }
+}
+
+void resetWifiConfiguration() {
+  // Nulstil WiFi-konfigurationen
+  Serial.println("Resseting WiFi-Configuration...");
+  LittleFS.remove(ssidPath);
+  LittleFS.remove(passPath);
+  LittleFS.remove(ipPath);
+  LittleFS.remove(gatewayPath);
+
+  // Genstart ESP32
+  ESP.restart();
+}
+
+void buttonHandling(String method) {
+  if (method == "clearnetwork") {
+    Serial.println("clearnetwork if statement hit");
+    resetWifiConfiguration();
+  }
+  else if (method == "textfile") {
+    Serial.println("textfile if statement hit");'
+  }
+  else if (method == "30days") {
+    Serial.println("30 days if statement hit");
+  }
 }
