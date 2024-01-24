@@ -155,7 +155,7 @@ function initBtnMethod(method) {
 }
 
 // Get historical data from the server
-fetch('http://192.168.0.203/loaddata')
+fetch(Site_address + 'loaddata')
   .then(function (response) {
     // Check if the response status is OK (200)
     if (response.ok) {
