@@ -39,10 +39,6 @@ void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp
     readingID = currentReadingID;
     Serial.print("Current Reading ID: ");
     Serial.println(readingID);
-    Serial.println("DAY STAMP!!!!!!!!!!!!");
-    Serial.println(dayStamp);
-    Serial.println("TIME STAMP!!!!!");
-    Serial.println(timeStamp);
     // Tjek om timeStamp er gyldig
     if (timeStamp.length() > 5 && timeStamp.indexOf(":") > 0) {
         String dataMessage = String(readingID) + "," + dayStamp + "," + timeStamp + "," +
