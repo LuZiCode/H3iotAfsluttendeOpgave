@@ -1,105 +1,101 @@
 var chartT;
 
-// Get current sensor readings when the page loads
-window.addEventListener('load', function () {
-  // Create Temperature Chart
-  chartT = new Highcharts.Chart({
-    chart: {
-      renderTo: 'chart-temperature'
-    },
-    series: [
-      {
-        name: 'Temperature #1',
-        type: 'line',
-        color: '#101D42',
-        marker: {
-          symbol: 'circle',
-          radius: 3,
-          fillColor: '#101D42',
-        }
-      },
-      {
-        name: 'Temperature #2',
-        type: 'line',
-        color: '#00A6A6',
-        marker: {
-          symbol: 'square',
-          radius: 3,
-          fillColor: '#00A6A6',
-        }
-      }
-    ],
-    title: {
-      text: undefined
-    },
-    xAxis: {
-      type: 'datetime',
-      dateTimeLabelFormats: { second: '%H:%M:%S' }
-    },
-    yAxis: {
-      title: {
-        text: 'Temperature Celsius Degrees'
+// Create Temperature Chart
+chartT = new Highcharts.Chart({
+  chart: {
+    renderTo: 'chart-temperature'
+  },
+  series: [
+    {
+      name: 'Temperature #1',
+      type: 'line',
+      color: '#101D42',
+      marker: {
+        symbol: 'circle',
+        radius: 3,
+        fillColor: '#101D42',
       }
     },
-    credits: {
-      enabled: false
+    {
+      name: 'Temperature #2',
+      type: 'line',
+      color: '#00A6A6',
+      marker: {
+        symbol: 'square',
+        radius: 3,
+        fillColor: '#00A6A6',
+      }
     }
-  });
-
-  // Fetch and plot initial readings
-  getReadings();
+  ],
+  title: {
+    text: undefined
+  },
+  xAxis: {
+    type: 'datetime',
+    dateTimeLabelFormats: { second: '%H:%M:%S' }
+  },
+  yAxis: {
+    title: {
+      text: 'Temperature Celsius Degrees'
+    }
+  },
+  credits: {
+    enabled: false
+  },
+  timezoneOffset: new Date().getTimezoneOffset() + 60
 });
 
-// Plot temperature in the temperature chart
-function plotTemperature(jsonValue) {
-  if (jsonValue.hasOwnProperty("time")) {
-    // var x = new Date(jsonValue.time).getTime();
-    // console.log(x);
-    
-    // Assuming the JSON structure is like {"sensor1": "...", "sensor2": "...", "time": "..."}
-    Object.keys(jsonValue).forEach((key, i) => {
-      var x = jsonValue.time;
-      if (key !== "time") {
-        var y = Number(jsonValue[key]);
-        console.log("CHART SERIES!!!!", chartT.series[i])
-        if (chartT.series[i].data.length >= 30) {
-          chartT.series[i].addPoint([x, y], true, true, true);
-        } else {
-          chartT.series[i].addPoint([x, y], true, false, true);
-        }
-      }
-    });
-  }
-}
-
-// Function to get current readings on the webpage when it loads for the first time
-function getReadings() {
-  var xhr = new XMLHttpRequest();
-  xhr.onreadystatechange = function () {
-    if (this.readyState == 4 && this.status == 200) {
-      var myObj = JSON.parse(this.responseText);
-      console.log(myObj);
-      plotTemperature(myObj);
+// Get historical data from the server
+fetch('http://192.168.0.203/loaddata')
+  .then(function (response) {
+    // Check if the response status is OK (200)
+    if (response.ok) {
+      return response.text(); // Read the CSV data as text
+    } else {
+      throw new Error('Failed to load historical data');
     }
-  };
-  xhr.open("GET", "/readings", true);
-  xhr.send();
-}
+  })
+  .then(function (csvData) {
+    // Parse the CSV data using papaparse
+    Papa.parse(csvData, {
+      header: false, // Assumes the first row contains headers
+      dynamicTyping: false, // Automatically convert values to numbers if possible
+      complete: function (results) {
+        if (results.errors.length > 0) {
+          // Log any parsing errors
+          console.error("CSV Parsing Errors:", results.errors);
+        }
 
-// WebSocket handling
-var socket = new WebSocket("ws://" + window.location.hostname + ":80/ws");
+        var historicalData = results.data;
 
-socket.onopen = function (event) {
-  console.log("WebSocket connected");
-};
+        // Extract the last 30 temperature values and their timestamps
+        var last30Data = historicalData.slice(-30);
 
-socket.onmessage = function (event) {
-  console.log("WebSocket message", event.data);
-  var myObj = JSON.parse(event.data);
-  console.log(myObj);
-  plotTemperature(myObj);
-};
+        // Plot the last 30 temperature values
+        last30Data.forEach(function (item) {
+          if (item.length === 5 && item[1] && item[2] && item[3] && item[4]) {
+            // Combine the date and time to create a complete timestamp
+            var dateTimeString = item[1] + " " + item[2];
+            var timestamp = new Date(dateTimeString).getTime();
 
-socket.onclose = function (event) {
-  console.log("WebSocket disconnected");
-};
+            // Use the temperature value for Temperature #1 series
+            var temperature1 = Number(item[3]);
+            chartT.series[0].addPoint([timestamp, temperature1], true, false, true);
+
+            // Use the temperature value for Temperature #2 series
+            var temperature2 = Number(item[4]);
+            chartT.series[1].addPoint([timestamp, temperature2], true, false, true);
+
+            console.log("Processed historical data:", timestamp, temperature1, temperature2);
+          } else {
+            console.error("Invalid historical data row:", item);
+          }
+        });
+      },
+    });
+  })
+  .catch(function (error) {
+    console.error('Fetch error:', error);
+  });
+
+// Continue with the rest of your code (WebSocket setup, etc.)

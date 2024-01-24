@@ -14,7 +14,7 @@
 
 #include "getReading.h"
 
-//Prototypes:
+// Prototypes:
 void logSDCard(int currentReadingID);
 
 const int oneWireBus = ONE_WIRE_BUS_VALUE;
@@ -90,13 +90,19 @@ int getMaxReadingID() {
   return maxReadingID;
 }
 
-void getTimeStamp() {
-  while (!timeClient.update()) {
+void getTimeStamp()
+{
+  while (!timeClient.update())
+  {
     timeClient.forceUpdate();
   }
+  // We need to extract date and time
   formattedDate = timeClient.getFormattedDate();
+
+  // Extract date
   int splitT = formattedDate.indexOf("T");
   dayStamp = formattedDate.substring(0, splitT);
+  // Extract time
   timeStamp = formattedDate.substring(splitT + 1, formattedDate.length() - 1);
 }
 
@@ -129,7 +135,6 @@ void logSDCard(int currentReadingID) {
     Serial.println(dataMessage);
     appendFile(SD, "/data.txt", dataMessage.c_str());
 }
-
 
 // LittleFS #############################################################################################################################
 
@@ -203,6 +208,7 @@ bool initWiFi() {
 
 void setup() {
   Serial.begin(115200);
+
   initWiFi();
   initLittleFS();
   initSDCard(); // Initialize SD Card
@@ -228,6 +234,23 @@ void setup() {
       Serial.println(timeStamp);
       Serial.println(jsonString);
     });
+
+    server.on("/loaddata", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+      // Read historical data from the SD card file
+      File file = SD.open("/data.txt", FILE_READ); // Assuming the data is stored in "/data.txt"
+      if (file)
+      {
+          String historicalData = file.readString();
+          file.close();
+          // Send the historical data as a response
+          request->send(200, "application/json", historicalData);
+      }
+      else
+      {
+          request->send(404, "text/plain", "File not found");
+      }
+  });
 
     server.addHandler(&ws);
     server.begin();
