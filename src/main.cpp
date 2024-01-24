@@ -66,32 +66,48 @@ String timeStamp;
 
 // SD CARD ############################################################################################################################
 
-void getTimeStamp() {
-  while (!timeClient.update()) {
+bool getTimeStamp() {
+  // Opdater timeClient og vent et øjeblik for at få en respons
+  if (!timeClient.update()) {
     timeClient.forceUpdate();
+    delay(500); // Vent et halvt sekund for at give tid til opdatering
   }
-  // We need to extract date and time
-  formattedDate = timeClient.getFormattedDate();
 
-  // Extract date
+  // Tjek igen efter forceUpdate
+  if (!timeClient.update()) {
+    return false; // Returner false, hvis tiden stadig ikke er opdateret
+  }
+
+  // Uddrag dato og tid
+  formattedDate = timeClient.getFormattedDate();
   int splitT = formattedDate.indexOf("T");
+  if (splitT == -1) {
+    return false; // Returner false, hvis formateringen er forkert
+  }
+
   dayStamp = formattedDate.substring(0, splitT);
-  // Extract time
   timeStamp = formattedDate.substring(splitT + 1, formattedDate.length() - 1);
+
+  return true; // Gyldig tidspunkt modtaget
 }
 
 void sendSensorReadingsToWebSocket() {
-  getTimeStamp();
-  String jsonString = getSensorReadings();
-  JSONVar json = JSON.parse(jsonString);
-  json["time"] = timeStamp;
-  jsonString = JSON.stringify(json);
-  ws.textAll(jsonString);
+  if (getTimeStamp()) {
+    String jsonString = getSensorReadings();
+    JSONVar json = JSON.parse(jsonString);
+    json["time"] = timeStamp;
+    jsonString = JSON.stringify(json);
+    ws.textAll(jsonString);
 
-  // Log data to SD Card
-  int maxReadingID = getMaxReadingID();
-  logSDCard(sensors, maxReadingID + 1, dayStamp, timeStamp);
+    // Log data til SD-kort
+    int maxReadingID = getMaxReadingID();
+    logSDCard(sensors, maxReadingID + 1, dayStamp, timeStamp);
+  } else {
+    Serial.println("Ugyldig timestamp, springer over logning");
+    // Her kan du tilføje yderligere handlinger, hvis timestamp er ugyldig
+  }
 }
+
 
 // LittleFS #############################################################################################################################
 
@@ -132,6 +148,7 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
 }
 
 bool initWiFi() {
+  
   if (ssidString == "" || ip == "") {
     Serial.println("Undefined SSID or IP address.");
     return false;

@@ -39,12 +39,20 @@ void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp
     readingID = currentReadingID;
     Serial.print("Current Reading ID: ");
     Serial.println(readingID);
-
-    String dataMessage = String(readingID) + "," + dayStamp + "," + timeStamp + "," +
-                         JSON.stringify(readings["sensor1"]) + "," +
-                         JSON.stringify(readings["sensor2"]) + "\r\n";
-    Serial.print("Save data: ");
-    Serial.println(dataMessage);
-    appendFile(SD, "/data.txt", dataMessage.c_str());
+    Serial.println("DAY STAMP!!!!!!!!!!!!");
+    Serial.println(dayStamp);
+    Serial.println("TIME STAMP!!!!!");
+    Serial.println(timeStamp);
+    // Tjek om timeStamp er gyldig
+    if (timeStamp.length() > 5 && timeStamp.indexOf(":") > 0) {
+        String dataMessage = String(readingID) + "," + dayStamp + "," + timeStamp + "," +
+                             JSON.stringify(readings["sensor1"]) + "," +
+                             JSON.stringify(readings["sensor2"]) + "\r\n";
+        Serial.print("Save data: ");
+        Serial.println(dataMessage);
+        appendFile(SD, "/data.txt", dataMessage.c_str());
+    } else {
+        Serial.println("Ugyldigt timestamp, gemmer ikke data");
+    }
 }
 
