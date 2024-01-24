@@ -3,6 +3,7 @@ var chartT;
 // Get current sensor readings when the page loads
 window.addEventListener('load', function () {
   setEventlisterners();
+
   // Create Temperature Chart
   chartT = new Highcharts.Chart({
     chart: {
@@ -92,6 +93,7 @@ chartT = new Highcharts.Chart({
     enabled: false
   },
   timezoneOffset: new Date().getTimezoneOffset() + 60
+});
 });
 
 function setEventlisterners() {
@@ -204,5 +206,3 @@ fetch('http://192.168.0.203/loaddata')
   .catch(function (error) {
     console.error('Fetch error:', error);
   });
-
-// Continue with the rest of your code (WebSocket setup, etc.)
