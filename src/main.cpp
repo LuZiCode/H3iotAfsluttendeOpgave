@@ -13,6 +13,10 @@
 #include "sdCardLogic.h" // SD card Logic 
 #include "getReading.h" // Reading Logic
 
+//Parameter
+void buttonHandling(String method);
+void resetWifiConfiguration();
+
 // Define pin for WIFI Reset button
 const int buttonPin = RESET_BTN_VALUE; // Erstat med din GPIO pin
 unsigned long buttonPressTime = 0;
@@ -59,8 +63,6 @@ NTPClient timeClient(ntpUDP, "87.104.58.9", 3600, 60000);
 String formattedDate;
 String dayStamp;
 String timeStamp;
-
-// SD CARD ############################################################################################################################
 
 void getTimeStamp() {
   while (!timeClient.update()) {
@@ -184,6 +186,16 @@ void setup() {
       Serial.println(jsonString);
     });
 
+    server.on("/buttonHandling", HTTP_GET, [](AsyncWebServerRequest *request) {
+      if (request->hasArg("param")) {
+        String paramValue = request->arg("param");
+        buttonHandling(paramValue);
+        request->send(200, "text/plain", "Metoden blev kaldt med param: " + paramValue);
+      } else {
+        request->send(400, "text/plain", "Parameter 'param' mangler");
+      }
+    });
+
     server.addHandler(&ws);
     server.begin();
   } else {
@@ -250,17 +262,34 @@ void loop() {
       isButtonPressed = true;
       buttonPressTime = millis();
     } else if (millis() - buttonPressTime > 5000) {
-      // Nulstil WiFi-konfigurationen
-      Serial.println("Resseting WiFi-Configuration...");
-      LittleFS.remove(ssidPath);
-      LittleFS.remove(passPath);
-      LittleFS.remove(ipPath);
-      LittleFS.remove(gatewayPath);
-
-      // Genstart ESP32
-      ESP.restart();
+      resetWifiConfiguration();
     }
   } else {
     isButtonPressed = false;
+  }
+}
+
+void resetWifiConfiguration() {
+  // Nulstil WiFi-konfigurationen
+  Serial.println("Resseting WiFi-Configuration...");
+  LittleFS.remove(ssidPath);
+  LittleFS.remove(passPath);
+  LittleFS.remove(ipPath);
+  LittleFS.remove(gatewayPath);
+
+  // Genstart ESP32
+  ESP.restart();
+}
+
+void buttonHandling(String method) {
+  if (method == "clearnetwork") {
+    Serial.println("clearnetwork if statement hit");
+    resetWifiConfiguration();
+  }
+  else if (method == "textfile") {
+    Serial.println("textfile if statement hit");'
+  }
+  else if (method == "30days") {
+    Serial.println("30 days if statement hit");
   }
 }

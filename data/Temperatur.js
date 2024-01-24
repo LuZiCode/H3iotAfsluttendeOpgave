@@ -2,6 +2,7 @@ var chartT;
 
 // Get current sensor readings when the page loads
 window.addEventListener('load', function () {
+  setEventlisterners();
   // Create Temperature Chart
   chartT = new Highcharts.Chart({
     chart: {
@@ -49,6 +50,35 @@ window.addEventListener('load', function () {
   // Fetch and plot initial readings
   getReadings();
 });
+
+function setEventlisterners() {
+  var pressed = false;
+  const burgerBtn = this.document.getElementById('burgerBtn');
+  const brugerContent = this.document.getElementById('burgerContent');
+  const burgerGrafBtns = this.document.getElementsByClassName('burger-graf-btn')
+  burgerBtn.addEventListener('click', function() {
+    if (!pressed) {
+      pressed = true;
+      brugerContent.classList.add('burger-show');
+    }
+    else {
+      pressed = false;
+      brugerContent.classList.remove('burger-show');
+    }
+  })
+  for (var i = 0; i < burgerGrafBtns.length; i++) {
+    burgerGrafBtns[i].addEventListener('click', function(event) {
+      initBtnMethod(event.target.value);
+    })
+  }
+}
+
+function initBtnMethod(method) {
+  fetch(`/buttonHandling?param=${encodeURIComponent(method)}`)
+    .then(response => response.text())
+    .then(data => console.log(data))
+    .catch(error => console.error('Der opstod en fejl:', error));
+}
 
 // Plot temperature in the temperature chart
 function plotTemperature(jsonValue) {
