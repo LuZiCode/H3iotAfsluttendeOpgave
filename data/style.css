@@ -62,6 +62,7 @@ p {
 
 .downloadcsv {
   all: unset;
+  max-width: 17rem;
 }
 
 .burger-graf-btn, .downloadcsv {
