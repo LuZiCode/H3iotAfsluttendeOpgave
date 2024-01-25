@@ -52,3 +52,27 @@ void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp
     }
 }
 
+bool clearDataFile() {
+  File file = SD.open("/data.txt", FILE_WRITE);
+  if (file) {
+    Serial.println("Data file cleared");
+    file.close();
+    return true;
+  } else {
+    Serial.println("Failed to open data file for clearing");
+    return false;
+  }
+  return false;
+}
+
+bool downloadCSV() {
+    if (SD.exists("/data.txt")) {
+        Serial.println("Data file is ready for download.");
+        return true;
+    } else {
+        Serial.println("Data file does not exist.");
+        return false;
+    }
+}
+
+

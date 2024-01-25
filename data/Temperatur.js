@@ -124,23 +124,6 @@ window.addEventListener('load', function () {
     }, 5000);
   };
 
-  // Get historical data from the server
-  fetch(Site_address + '/loaddata')
-    .then(function (response) {
-      if (response.ok) {
-        return response.text();
-      } else {
-        throw new Error('Failed to load historical data');
-      }
-    })
-    .then(function (csvData) {
-      Papa.parse(csvData, {
-        header: false,
-        dynamicTyping: false,
-        complete: function (results) {
-          if (results.errors.length > 0) {
-            console.error("CSV Parsing Errors:", results.errors);
-          }
 // Get historical data from the server
 fetch(Site_address + '/loaddata')
   .then(function (response) {
@@ -227,9 +210,30 @@ fetch(Site_address + '/loaddata')
   }
 
   function initBtnMethod(method) {
-    fetch(`/buttonHandling?param=${encodeURIComponent(method)}`)
-      .then(response => response.text())
-      .then(data => console.log(data))
-      .catch(error => console.error('Der opstod en fejl:', error));
+    if (method == "cleargraf") {
+      clearChart();
+    }
+    else {
+      fetch(`/buttonHandling?param=${encodeURIComponent(method)}`)
+        .then(response => response.text())
+        .then(data => {
+          var responseElement = document.getElementById('response-message');
+          responseElement.classList.add('success'); 
+          responseElement.textContent = data;
+        })
+        .catch(error => {
+          console.error('Der opstod en fejl:', error);
+          var responseElement = document.getElementById('response-message');
+          responseElement.classList.add('fail');
+          responseElement.textContent = error;
+        });
+    }
   }
+  function clearChart() {
+    chartT.series[0].setData([], true);
+    chartT.series[1].setData([], true);
+    var responseElement = document.getElementById('response-message');
+    responseElement.classList.add('success'); 
+    responseElement.textContent = "Grafen er clearet";
+  }  
 });

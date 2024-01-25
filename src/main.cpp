@@ -14,7 +14,7 @@
 #include "getReading.h" // Reading Logic
 
 // Parameter
-void buttonHandling(String method);
+bool buttonHandling(String method);
 void resetWifiConfiguration();
 
 // Define pin for WIFI Reset button
@@ -245,8 +245,16 @@ void setup() {
     server.on("/buttonHandling", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (request->hasArg("param")) {
         String paramValue = request->arg("param");
-        buttonHandling(paramValue);
-        request->send(200, "text/plain", "Metoden blev kaldt med param: " + paramValue);
+        if (buttonHandling(paramValue)) {
+          if (paramValue == "csvdownload") {
+            request->send(SD, "/data.txt", "text/plain");
+          } else {
+            request->send(200, "text/plain", paramValue + "metoden blev gennemført korrekt");
+          }
+        }
+        else {
+          request->send(400, "text/plain", "Der skete en fejl under handlingen");
+        }
       } else {
         request->send(400, "text/plain", "Parameter 'param' mangler");
       }
@@ -337,15 +345,17 @@ void resetWifiConfiguration() {
   ESP.restart();
 }
 
-void buttonHandling(String method) {
+bool buttonHandling(String method) {
   if (method == "clearnetwork") {
     Serial.println("clearnetwork if statement hit");
     resetWifiConfiguration();
-  } else if (method == "textfile") {
-    Serial.println("textfile if statement hit");
-    // Add your logic for the "textfile" case
-  } else if (method == "30days") {
-    Serial.println("30 days if statement hit");
-    // Add your logic for the "30days" case
+    return true;
+  } else if (method == "csvdownload") {
+    Serial.println("csv download if statement hit");
+    return downloadCSV();
+  } else if (method == "deletedata") {
+    Serial.println("delete data if statement hit");
+    return clearDataFile();
   }
+  return false;
 }

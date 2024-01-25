@@ -9,5 +9,6 @@
 void initSDCard();
 int getMaxReadingID();
 void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp, String timeStamp);
-
+bool clearDataFile();
+bool downloadCSV();
 #endif // SDCARDLOGIC_H
