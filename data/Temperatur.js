@@ -141,6 +141,29 @@ window.addEventListener('load', function () {
           if (results.errors.length > 0) {
             console.error("CSV Parsing Errors:", results.errors);
           }
+// Get historical data from the server
+fetch(Site_address + '/loaddata')
+  .then(function (response) {
+    console.log("RESPONSE!!!!", response);
+    // Check if the response status is OK (200)
+    if (response.ok) {
+      console.log("RESPONSE TEXT!!!!", response.text);
+      return response.text(); // Read the CSV data as text
+    } else {
+      throw new Error('Failed to load historical data');
+    }
+  })
+  .then(function (csvData) {
+    console.log("CSV DATA!!!!", csvData);
+    // Parse the CSV data using papaparse
+    Papa.parse(csvData, {
+      header: false, // Assumes the first row contains headers
+      dynamicTyping: false, // Automatically convert values to numbers if possible
+      complete: function (results) {
+        if (results.errors.length > 0) {
+          // Log any parsing errors
+          console.error("CSV Parsing Errors:", results.errors);
+        }
 
           var historicalData = results.data;
 
