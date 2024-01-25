@@ -64,6 +64,7 @@ String formattedDate;
 String dayStamp;
 String timeStamp;
 
+
 // SD CARD ############################################################################################################################
 
 bool getTimeStamp() {
@@ -97,14 +98,19 @@ void sendSensorReadingsToWebSocket() {
     JSONVar json = JSON.parse(jsonString);
     json["time"] = timeStamp;
     jsonString = JSON.stringify(json);
-    ws.textAll(jsonString);
 
-    // Log data til SD-kort
+    // Ensure that the String is UTF-8 encoded
+    ws.textAll(String (jsonString.c_str()));
+
+    // For debugging, print the UTF-8 encoded data
+    Serial.println(jsonString);
+
+    // Log data to SD card
     int maxReadingID = getMaxReadingID();
     logSDCard(sensors, maxReadingID + 1, dayStamp, timeStamp);
   } else {
-    Serial.println("Ugyldig timestamp, springer over logning");
-    // Her kan du tilføje yderligere handlinger, hvis timestamp er ugyldig
+    Serial.println("Invalid timestamp, skipping logging");
+    // Add additional actions if the timestamp is invalid
   }
 }
 
@@ -180,12 +186,29 @@ bool initWiFi() {
   return true;
 }
 
+void handleWebSocketMessage(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  // Handle WebSocket messages here
+  if (type == WS_EVT_DATA) {
+    AwsFrameInfo *info = (AwsFrameInfo*)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+      // Handle text message received from WebSocket client
+      String message = "";
+      for(size_t i = 0; i < len; i++) {
+        message += (char)data[i];
+      }
+      // Process the WebSocket message as needed
+      Serial.println("WebSocket Message received: " + message);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
   initWiFi();
   initLittleFS();
   initSDCard(); // Initialize SD Card
+  ws.onEvent(handleWebSocketMessage);
 
   ssidString = readFile(LittleFS, ssidPath);
   pass = readFile(LittleFS, passPath);
@@ -204,9 +227,6 @@ void setup() {
       json["time"] = timeStamp;
       jsonString = JSON.stringify(json);
       request->send(200, "application/json", jsonString);
-      Serial.println("XXXXXX");
-      Serial.println(timeStamp);
-      Serial.println(jsonString);
     });
 
     server.on("/loaddata", HTTP_GET, [](AsyncWebServerRequest *request) {
