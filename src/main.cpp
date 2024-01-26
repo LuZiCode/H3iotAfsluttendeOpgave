@@ -1,3 +1,4 @@
+// Include necessary libraries for WiFi, web server, file system, JSON parsing, OneWire, DallasTemperature, OTA updates, NTP client
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -9,69 +10,75 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+// Include custom configuration and logic files
 #include "config.h" // Custom config
 #include "sdCardLogic.h" // SD card Logic 
 #include "getReading.h" // Reading Logic
 
-// Parameter
+// Function prototypes for handling button interactions and resetting WiFi configuration
 bool buttonHandling(String method);
 void resetWifiConfiguration();
 
-// Define pin for WIFI Reset button
+// Pin configuration for WiFi Reset button
 const int buttonPin = RESET_BTN_VALUE; // Replace with your GPIO pin
 unsigned long buttonPressTime = 0;
 bool isButtonPressed = false;
 
+// OneWire and DallasTemperature setup for sensor reading
 const int oneWireBus = ONE_WIRE_BUS_VALUE;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 OneWire ds(ONE_WIRE_BUS_VALUE);
 
+// Web server and WebSocket setup 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+// Global variables for sensor readings and time management
 extern JSONVar readings;
-
 unsigned long lastTime = 0;
 unsigned long timerDelay = 15000;
 
+// WiFi configuration variables
 String ssidString;
 String pass;
 String ip;
 String gateway;
 
+// Constants for handling POST requests
 const char* PARAM_INPUT_1 = "ssid";
 const char* PARAM_INPUT_2 = "pass";
 const char* PARAM_INPUT_3 = "ip";
 const char* PARAM_INPUT_4 = "gateway";
 
+// File paths for WiFi configuration stored in LittleFS
 const char* ssidPath = "/ssid.txt";
 const char* passPath = "/pass.txt";
 const char* ipPath = "/ip.txt";
 const char* gatewayPath = "/gateway.txt";
 
+// Network configuration for static IP
 IPAddress dns(8, 8, 8, 8);
 IPAddress localIP;
 IPAddress localGateway;
 IPAddress subnet(255, 255, 0, 0);
 
+// NTP client for time synchronization
 const long interval = 10000;
-
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "87.104.58.9", 3600, 60000);
 
+// Variables to store formatted date and time
 String formattedDate;
 String dayStamp;
 String timeStamp;
 
-
-// SD CARD ############################################################################################################################
-
+// Function to get the current timestamp from NTP server
 bool getTimeStamp() {
-  // Opdater timeClient og vent et øjeblik for at få en respons
+  // Update timeClient and wait for a response
   if (!timeClient.update()) {
     timeClient.forceUpdate();
-    delay(500); // Vent et halvt sekund for at give tid til opdatering
+    delay(500); // Rest of the function handles time synchronization and parsing
   }
 
   // Tjek igen efter forceUpdate
@@ -92,6 +99,7 @@ bool getTimeStamp() {
   return true; // Gyldig tidspunkt modtaget
 }
 
+// Function to send sensor readings to WebSocket and log data on SD card
 void sendSensorReadingsToWebSocket() {
   if (getTimeStamp()) {
     String jsonString = getSensorReadings();
@@ -117,6 +125,7 @@ void sendSensorReadingsToWebSocket() {
 
 // LittleFS #############################################################################################################################
 
+// Function to initialize LittleFS
 void initLittleFS() {
   if (!LittleFS.begin(true)) {
     Serial.println("An error has occurred while mounting LittleFS");
@@ -124,24 +133,31 @@ void initLittleFS() {
   Serial.println("LittleFS mounted successfully");
 }
 
+// Function to read a file from filesystem
 String readFile(fs::FS &fs, const char *path) {
   Serial.printf("Reading file: %s\r\n", path);
   File file = fs.open(path);
+  //If no file run this if statement
   if (!file || file.isDirectory()) {
     Serial.println("- failed to open file for reading");
     return String();
   }
   String fileContent;
+  // While file is available
   while (file.available()) {
+    //Set variable to file until a new line
     fileContent = file.readStringUntil('\n');
     break;
   }
+  //Return file content
   return fileContent;
 }
 
+// Function to write to a file in filesystem
 void writeFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Writing file: %s\r\n", path);
   File file = fs.open(path, FILE_WRITE);
+  //if fail to open filepath
   if (!file) {
     Serial.println("- failed to open file for writing");
     return;
@@ -153,8 +169,8 @@ void writeFile(fs::FS &fs, const char *path, const char *message) {
   }
 }
 
+// Function to initialize WiFi connection
 bool initWiFi() {
-  
   if (ssidString == "" || ip == "") {
     Serial.println("Undefined SSID or IP address.");
     return false;
@@ -186,6 +202,7 @@ bool initWiFi() {
   return true;
 }
 
+// Function to handle WebSocket messages
 void handleWebSocketMessage(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
   // Handle WebSocket messages here
   if (type == WS_EVT_DATA) {
@@ -243,17 +260,24 @@ void setup() {
     });
 
     server.on("/buttonHandling", HTTP_GET, [](AsyncWebServerRequest *request) {
+      //If /buttonHandling has a parameter called "param" run this if statement
       if (request->hasArg("param")) {
         String paramValue = request->arg("param");
+        //if buttonHandling returns true
         if (buttonHandling(paramValue)) {
+          //if parameter is equal to "csvdownload"
           if (paramValue == "csvdownload") {
+            //send the content of SD card through the response as text/plain
             request->send(SD, "/data.txt", "text/plain");
-          } else {
+          } else { // else run this
+            //send back a 200 response, text/plain, with a success message
             request->send(200, "text/plain", paramValue + "successful");
           }
         } else {
+          //else send 400 reponse type with an error message
           request->send(400, "text/plain", "Noget gik galt under buttonHandling");
         }
+      // else run this
       } else {
         request->send(400, "text/plain", "Parameter 'param' mangler");
       }
@@ -266,6 +290,7 @@ void setup() {
     IPAddress IP = WiFi.softAPIP();
     Serial.println(IP);
 
+    //if server is accessed be default domain run this
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(LittleFS, "/wifimanager.html", "text/html");
     });
@@ -314,6 +339,7 @@ void setup() {
 }
 
 void loop() {
+  //update timeclient
   timeClient.update();
   if ((millis() - lastTime) > timerDelay) {
     sendSensorReadingsToWebSocket();
@@ -321,10 +347,12 @@ void loop() {
   }
   // Check Resetbtn status
   if (digitalRead(buttonPin) == LOW) {
+    //if variable is false
     if (!isButtonPressed) {
       isButtonPressed = true;
       buttonPressTime = millis();
-    } else if (millis() - buttonPressTime > 5000) {
+    } else if (millis() - buttonPressTime > 5000) { //if button is pressed for 5 seconds
+      //reset wifi conf
       resetWifiConfiguration();
     }
   } else {
@@ -332,8 +360,8 @@ void loop() {
   }
 }
 
+// Resets WiFi configuration by removing saved settings and restarting ESP32
 void resetWifiConfiguration() {
-  // Reset WiFi configuration
   Serial.println("Resetting WiFi Configuration...");
   LittleFS.remove(ssidPath);
   LittleFS.remove(passPath);
@@ -344,6 +372,7 @@ void resetWifiConfiguration() {
   ESP.restart();
 }
 
+// Handles different button interactions based on the 'method' parameter
 bool buttonHandling(String method) {
   if (method == "clearnetwork") {
     Serial.println("clearnetwork if statement hit");
@@ -351,10 +380,12 @@ bool buttonHandling(String method) {
     return true;
   } else if (method == "csvdownload") {
     Serial.println("csvdownload if statement hit");
+    // return downloadCSV method
     return downloadCSV();
   } else if (method == "deletedata") {
+    // return clearDatafile method
     return clearDataFile();
   }
-  
+  //if none of the if statements if hit, return false
   return false;
 }

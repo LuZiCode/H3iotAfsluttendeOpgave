@@ -8,12 +8,14 @@ RTC_DATA_ATTR int readingID = 0;
 extern JSONVar readings;
 
 void initSDCard() {
+  //if no sd card on the sd pin value run this
   if (!SD.begin(SD_CS)) {
     Serial.println("SD Card Mount Failed");
     return;
   }
 }
 
+//Get the current maxreadingid on sd card
 int getMaxReadingID() {
   File file = SD.open("/data.txt", FILE_READ);
   int maxReadingID = 0;
@@ -32,6 +34,7 @@ int getMaxReadingID() {
   return maxReadingID;
 }
 
+//log data to sd card
 void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp, String timeStamp) {
     sensors.begin();
     getSensorReadings();
@@ -52,6 +55,7 @@ void logSDCard(DallasTemperature& sensors, int currentReadingID, String dayStamp
     }
 }
 
+//clear data on the sd card
 bool clearDataFile() {
   File file = SD.open("/data.txt", FILE_WRITE);
   if (file) {
@@ -65,6 +69,7 @@ bool clearDataFile() {
   return false;
 }
 
+//check if sd card is ready to be downloaded
 bool downloadCSV() {
     if (SD.exists("/data.txt")) {
         Serial.println("Data file is ready for download.");
